@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es-UY">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Panel docente de resultados | Profe Macón</title>
+
+    <meta
+      name="description"
+      content="Panel docente para consultar resultados de actividades interactivas de Profe Macón"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <!-- HEADER estilo hub general -->
+      <header class="site-header" id="siteHeader">
+        <div class="header-container">
+          <a class="logo-link" href="#">
+            <img
+              src="assets/LogoProfeMacon.jpg"
+              alt="Logo Profe Macón"
+              class="main-logo"
+            />
+          </a>
+
+          <div class="title-block">
+            <h1>PANEL DOCENTE DE RESULTADOS</h1>
+            <p>Seguimiento y análisis de actividades interactivas</p>
+          </div>
+
+          <nav class="main-nav" aria-label="Navegación principal">
+            <a href="#">Resultados</a>
+            <a href="#analisis">Análisis por pregunta</a>
+            <a href="https://actividades.profemacon.net">Actividades</a>
+            <button id="logoutBtn" class="nav-button" hidden>Salir</button>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Usuario logueado -->
+      <div class="teacher-bar" id="userArea" hidden>
+        <div class="teacher-bar-inner">
+          <span>Usuario docente:</span>
+          <strong id="userEmail"></strong>
+        </div>
+      </div>
+
+      <main>
+        <!-- Pantalla de login -->
+        <section id="loginView" class="login-view">
+          <section class="hero login-card">
+            <h2>Ingreso docente</h2>
+
+            <p>
+              Este panel permite consultar resultados de actividades, revisar
+              intentos y analizar el desempeño por grupo y por pregunta.
+            </p>
+
+            <p class="login-note">
+              El acceso está restringido a usuarios docentes autorizados.
+            </p>
+
+            <div id="googleLoginContainer" class="google-login-container">
+              <!-- Google renderiza el botón acá desde auth.js -->
+            </div>
+
+            <p id="loginMessage" class="message" aria-live="polite"></p>
+          </section>
+        </section>
+
+        <!-- Panel principal -->
+        <section id="dashboardView" class="dashboard-view" hidden>
+          <!-- Filtros -->
+          <section class="card card-pi filters-card">
+            <div class="filters-header">
+              <div>
+                <h2 class="section-title">Resultados</h2>
+                <p>
+                  Filtrá por grupo, actividad, tipo de intento o estudiante.
+                </p>
+              </div>
+
+              <button id="refreshBtn" class="btn">Actualizar</button>
+            </div>
+
+            <div class="filters-grid">
+              <label>
+                Grupo
+                <select id="groupFilter">
+                  <option value="">Todos los grupos</option>
+                </select>
+              </label>
+
+              <label>
+                Actividad
+                <select id="activityFilter">
+                  <option value="">Todas las actividades</option>
+                </select>
+              </label>
+
+              <label>
+                Intentos
+                <select id="attemptModeFilter">
+                  <option value="ultimo">Último intento</option>
+                  <option value="mejor">Mejor intento</option>
+                  <option value="todos">Todos los intentos</option>
+                </select>
+              </label>
+
+              <label>
+                Buscar estudiante
+                <input
+                  id="studentSearch"
+                  type="search"
+                  placeholder="Nombre o apellido..."
+                />
+              </label>
+            </div>
+          </section>
+
+          <!-- Resumen -->
+          <section class="summary-grid" aria-label="Resumen de resultados">
+            <article class="card summary-card">
+              <span class="summary-label">Promedio</span>
+              <strong id="averageValue">--</strong>
+            </article>
+
+            <article class="card summary-card">
+              <span class="summary-label">Intentos</span>
+              <strong id="attemptsValue">--</strong>
+            </article>
+
+            <article class="card summary-card summary-green">
+              <span class="summary-label">Verde</span>
+              <strong id="greenValue">--</strong>
+            </article>
+
+            <article class="card summary-card summary-yellow">
+              <span class="summary-label">Amarillo</span>
+              <strong id="yellowValue">--</strong>
+            </article>
+
+            <article class="card summary-card summary-red">
+              <span class="summary-label">Rojo</span>
+              <strong id="redValue">--</strong>
+            </article>
+          </section>
+
+          <!-- Tabla de resultados -->
+          <section class="card table-card">
+            <div class="table-header">
+              <div>
+                <h2 class="section-title">Listado de intentos</h2>
+                <p id="tableStatus">Sin datos cargados todavía.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <button class="sort-button" data-sort="nombre">
+                        Nombre
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="apellido">
+                        Apellido
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="grupo">
+                        Grupo
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="actividad_titulo">
+                        Actividad
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="numero_intento">
+                        Intento
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="porcentaje">
+                        %
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="juicio">
+                        Juicio
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-button" data-sort="fecha_intento">
+                        Fecha
+                      </button>
+                    </th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+
+                <tbody id="resultsTableBody">
+                  <tr>
+                    <td colspan="9" class="empty-cell">
+                      Iniciá sesión y cargá los resultados.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Análisis por pregunta -->
+          <section id="analisis" class="card card-pii analysis-card">
+            <div class="analysis-header">
+              <div>
+                <h2 class="section-title">Análisis por pregunta</h2>
+                <p>
+                  Seleccioná una actividad para ver qué preguntas tuvieron más
+                  dificultad.
+                </p>
+              </div>
+
+              <button id="loadAnalysisBtn" class="btn">Ver análisis</button>
+            </div>
+
+            <div
+              id="questionAnalysisContainer"
+              class="question-analysis-container"
+            >
+              <p class="empty-state">
+                Todavía no se cargó el análisis por pregunta.
+              </p>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <!-- Modal detalle de intento -->
+      <div id="attemptModal" class="modal-backdrop" hidden>
+        <section
+          class="modal-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modalTitle"
+        >
+          <header class="modal-header">
+            <div>
+              <h2 id="modalTitle">Detalle del intento</h2>
+              <p id="modalSubtitle">Información del estudiante y respuestas.</p>
+            </div>
+
+            <button
+              id="closeModalBtn"
+              class="icon-button"
+              aria-label="Cerrar detalle"
+            >
+              ×
+            </button>
+          </header>
+
+          <div id="attemptDetailContent" class="modal-content">
+            <p class="empty-state">Cargando detalle...</p>
+          </div>
+        </section>
+      </div>
+
+      <footer>
+        <p>Profe Macón © 2026</p>
+        <small>Ayudante Actividades · Panel docente de resultados</small>
+      </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="header.js"></script>
+  </body>
+</html>
