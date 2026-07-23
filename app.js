@@ -4,6 +4,14 @@ const App = {
   sortKey: "fecha_intento",
   sortDirection: "desc",
   initialized: false,
+  cuestionariosCargados: new Map(),
+
+  urlsCuestionarios: {
+    "iterativas-java-03":
+      "https://actividades.profemacon.net/2026/pi/iterativas/03/quiz-data.js",
+    "iterativas-java-04":
+      "https://actividades.profemacon.net/2026/pi/iterativas/04/quiz-data.js",
+  },
 
   initAfterLogin() {
     if (this.initialized) {
@@ -366,10 +374,68 @@ const App = {
       return;
     }
 
-    content.innerHTML = this.renderDetalleIntento(response);
+    const preguntas = await this.cargarCuestionario(
+      response.intento?.actividad_slug,
+    );
+
+    content.innerHTML = this.renderDetalleIntento(response, preguntas);
   },
 
-  renderDetalleIntento(data) {
+  cargarCuestionario(slug) {
+    const url = this.urlsCuestionarios[slug];
+
+    if (!url) return Promise.resolve([]);
+    if (this.cuestionariosCargados.has(slug)) {
+      return this.cuestionariosCargados.get(slug);
+    }
+
+    const carga = new Promise((resolve) => {
+      const script = document.createElement("script");
+      const datosPrevios = window.QUIZ_DATA;
+
+      script.src = url;
+      script.onload = () => {
+        const preguntas = Array.isArray(window.QUIZ_DATA?.preguntas)
+          ? window.QUIZ_DATA.preguntas
+          : [];
+        window.QUIZ_DATA = datosPrevios;
+        script.remove();
+        resolve(preguntas);
+      };
+      script.onerror = () => {
+        window.QUIZ_DATA = datosPrevios;
+        script.remove();
+        resolve([]);
+      };
+      document.head.appendChild(script);
+    });
+
+    this.cuestionariosCargados.set(slug, carga);
+    return carga;
+  },
+
+  textoRespuesta(preguntas, numeroPregunta, respuesta) {
+    const pregunta = preguntas.find(
+      (item) => Number(item.numero) === Number(numeroPregunta),
+    );
+    const valores = String(respuesta || "")
+      .split("|")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (!pregunta || !valores.length) return respuesta || "";
+
+    const textos = valores
+      .map((valor) =>
+        (pregunta.opciones || []).find((opcion) => opcion.valor === valor)
+          ?.texto,
+      )
+      .filter(Boolean);
+
+    return textos.length === valores.length ? textos.join(" · ") : respuesta || "";
+  },
+
+  renderDetalleIntento(data, preguntas = []) {
     const intento = data.intento || {};
     const respuestas = data.respuestas || [];
 
@@ -377,7 +443,9 @@ const App = {
     const scoreClass = this.getScoreClass(porcentaje);
 
     const respuestasHtml = respuestas.length
-      ? respuestas.map((respuesta) => this.renderRespuesta(respuesta)).join("")
+      ? respuestas
+          .map((respuesta) => this.renderRespuesta(respuesta, preguntas))
+          .join("")
       : `<p class="empty-state">No hay respuestas registradas para este intento.</p>`;
 
     return `
@@ -413,7 +481,7 @@ const App = {
     `;
   },
 
-  renderRespuesta(respuesta) {
+  renderRespuesta(respuesta, preguntas) {
     const correcta = Boolean(respuesta.es_correcta);
 
     return `
@@ -427,12 +495,24 @@ const App = {
 
         <p>
           <strong>Respuesta dada:</strong>
-          ${this.escapeHtml(respuesta.respuesta_dada || "")}
+          ${this.escapeHtml(
+            this.textoRespuesta(
+              preguntas,
+              respuesta.numero_pregunta,
+              respuesta.respuesta_dada,
+            ),
+          )}
         </p>
 
         <p>
           <strong>Respuesta correcta:</strong>
-          ${this.escapeHtml(respuesta.respuesta_correcta || "")}
+          ${this.escapeHtml(
+            this.textoRespuesta(
+              preguntas,
+              respuesta.numero_pregunta,
+              respuesta.respuesta_correcta,
+            ),
+          )}
         </p>
 
         <p>
