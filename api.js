@@ -74,4 +74,11 @@ const DocenteAPI = {
       actividadSlug,
     });
   },
+
+  async obtenerEntregas({ idToken, grupo }) {
+    return this.post("/docente/entregas", {
+      idToken,
+      grupo: grupo || null,
+    });
+  },
 };

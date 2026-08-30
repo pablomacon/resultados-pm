@@ -221,6 +221,28 @@
             </div>
           </section>
 
+          <section id="entregas" class="card deliveries-card">
+            <div class="filters-header">
+              <div>
+                <h2 class="section-title">Entregas de código</h2>
+                <p>Consultá archivos, código escrito y explicaciones de “50 ejercicios de arreglos y Strings”.</p>
+              </div>
+              <button id="refreshDeliveriesBtn" class="btn">Actualizar entregas</button>
+            </div>
+            <div class="filters-grid deliveries-filters">
+              <label>Grupo
+                <select id="deliveryGroupFilter"><option value="">Todos los grupos</option></select>
+              </label>
+            </div>
+            <p id="deliveriesStatus" class="table-status">Iniciá sesión para cargar las entregas.</p>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Estudiante</th><th>Grupo</th><th>Ejercicio</th><th>Bloque</th><th>Versión</th><th>Evidencia</th><th>Fecha</th><th>Detalle</th></tr></thead>
+                <tbody id="deliveriesTableBody"><tr><td colspan="8" class="empty-cell">Sin entregas cargadas.</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+
           <!-- Análisis por pregunta -->
           <section id="analisis" class="card card-pii analysis-card">
             <div class="analysis-header">

@@ -5,6 +5,8 @@ const App = {
   sortDirection: "desc",
   initialized: false,
   cuestionariosCargados: new Map(),
+  entregas: [],
+  gruposEntregas: [],
 
   urlsCuestionarios: {
     "iterativas-java-03":
@@ -16,6 +18,7 @@ const App = {
   initAfterLogin() {
     if (this.initialized) {
       this.cargarResultados();
+      this.cargarEntregas();
       return;
     }
 
@@ -23,6 +26,7 @@ const App = {
 
     this.bindEvents();
     this.cargarResultados();
+    this.cargarEntregas();
   },
 
   bindEvents() {
@@ -34,10 +38,15 @@ const App = {
     const loadAnalysisBtn = document.getElementById("loadAnalysisBtn");
     const closeModalBtn = document.getElementById("closeModalBtn");
     const attemptModal = document.getElementById("attemptModal");
+    const refreshDeliveriesBtn = document.getElementById("refreshDeliveriesBtn");
+    const deliveryGroupFilter = document.getElementById("deliveryGroupFilter");
 
     if (refreshBtn) {
       refreshBtn.addEventListener("click", () => this.cargarResultados());
     }
+
+    if (refreshDeliveriesBtn) refreshDeliveriesBtn.addEventListener("click", () => this.cargarEntregas());
+    if (deliveryGroupFilter) deliveryGroupFilter.addEventListener("change", () => this.cargarEntregas());
 
     if (groupFilter) {
       groupFilter.addEventListener("change", () => this.cargarResultados());
@@ -346,6 +355,70 @@ const App = {
     if (greenValue) greenValue.textContent = String(verdes);
     if (yellowValue) yellowValue.textContent = String(amarillos);
     if (redValue) redValue.textContent = String(rojos);
+  },
+
+  async cargarEntregas() {
+    const status = document.getElementById("deliveriesStatus");
+    const group = document.getElementById("deliveryGroupFilter")?.value || "";
+    if (status) status.textContent = "Cargando entregas...";
+    const response = await DocenteAPI.obtenerEntregas({ idToken: AuthService.idToken, grupo: group });
+    if (!response.ok) {
+      this.entregas = [];
+      if (status) status.textContent = response.message || "No se pudieron cargar las entregas.";
+      this.renderEntregas();
+      return;
+    }
+    this.entregas = response.entregas || [];
+    this.gruposEntregas = [...new Set([...this.gruposEntregas, ...this.entregas.map((item) => item.grupo).filter(Boolean)])].sort();
+    this.cargarGruposEntregas(group);
+    this.renderEntregas();
+  },
+
+  cargarGruposEntregas(grupoActual) {
+    const select = document.getElementById("deliveryGroupFilter");
+    if (!select) return;
+    const groups = this.gruposEntregas;
+    select.innerHTML = '<option value="">Todos los grupos</option>';
+    groups.forEach((group) => { const option = document.createElement("option"); option.value = group; option.textContent = group; select.appendChild(option); });
+    select.value = grupoActual;
+  },
+
+  renderEntregas() {
+    const body = document.getElementById("deliveriesTableBody");
+    const status = document.getElementById("deliveriesStatus");
+    if (!body) return;
+    if (!this.entregas.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty-cell">No hay entregas para los filtros seleccionados.</td></tr>';
+      if (status) status.textContent = "No hay entregas registradas.";
+      return;
+    }
+    body.innerHTML = this.entregas.map((item) => `<tr>
+      <td>${this.escapeHtml(`${item.apellido || ""}, ${item.nombre || ""}`)}</td>
+      <td>${this.escapeHtml(item.grupo || "")}</td>
+      <td>${this.escapeHtml(item.numero_ejercicio)}</td>
+      <td>${this.escapeHtml(item.bloque)}</td>
+      <td>${this.escapeHtml(item.numero_version)}</td>
+      <td><span class="delivery-type ${item.tipo_evidencia === "texto" ? "text" : ""}">${item.tipo_evidencia === "texto" ? "Código escrito" : "Archivo"}</span></td>
+      <td>${this.formatearFecha(item.fecha_entrega)}</td>
+      <td><button class="detail-button" data-delivery-id="${item.entrega_id}">Ver</button></td>
+    </tr>`).join("");
+    body.querySelectorAll("[data-delivery-id]").forEach((button) => button.addEventListener("click", () => this.abrirDetalleEntrega(button.dataset.deliveryId)));
+    if (status) status.textContent = `${this.entregas.length} entrega(s) mostrada(s).`;
+  },
+
+  abrirDetalleEntrega(id) {
+    const item = this.entregas.find((delivery) => String(delivery.entrega_id) === String(id));
+    const modal = document.getElementById("attemptModal");
+    const title = document.getElementById("modalTitle");
+    const subtitle = document.getElementById("modalSubtitle");
+    const content = document.getElementById("attemptDetailContent");
+    if (!item || !modal || !content) return;
+    if (title) title.textContent = `Entrega · Ejercicio ${item.numero_ejercicio}`;
+    if (subtitle) subtitle.textContent = `${item.apellido}, ${item.nombre} · Bloque ${item.bloque} · Versión ${item.numero_version}`;
+    const drive = item.drive_file_id ? `<p><strong>Archivo:</strong> ${this.escapeHtml(item.nombre_original || "")} · <a class="drive-link" target="_blank" rel="noopener" href="https://drive.google.com/open?id=${encodeURIComponent(item.drive_file_id)}">Abrir en Drive</a></p>` : "";
+    const code = item.codigo_texto ? `<h3>Código escrito</h3><pre class="code-preview">${this.escapeHtml(item.codigo_texto)}</pre>` : "";
+    content.innerHTML = `<section class="detail-summary"><article class="detail-summary-item"><span>Grupo</span><strong>${this.escapeHtml(item.grupo)}</strong></article><article class="detail-summary-item"><span>Fecha</span><strong>${this.formatearFecha(item.fecha_entrega)}</strong></article><article class="detail-summary-item"><span>Evidencia</span><strong>${this.escapeHtml(item.tipo_evidencia)}</strong></article></section><section class="answer-list">${drive}${code}<h3>Respuesta para explicar</h3><p>${this.escapeHtml(item.respuesta_explicacion)}</p></section>`;
+    modal.hidden = false;
   },
 
   async abrirDetalleIntento(intentoId) {
