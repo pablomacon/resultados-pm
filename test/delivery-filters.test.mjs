@@ -8,6 +8,8 @@ const elements = {
   deliveryStudentFilter: { value: "" },
   deliveriesStatus: { textContent: "" },
   deliveriesTableBody: { innerHTML: "", querySelectorAll: () => [] },
+  tableStatus: { textContent: "" },
+  resultsTableBody: { innerHTML: "", querySelectorAll: () => [] },
 };
 
 globalThis.window = {};
@@ -37,4 +39,29 @@ test("shows every delivery when filters are cleared", () => {
   Object.values(elements).slice(0, 4).forEach((element) => { element.value = ""; });
   window.App.aplicarFiltrosEntregas();
   assert.equal(window.App.entregas.length, 3);
+});
+
+test("shows 25 result rows by default and can show all", () => {
+  window.App.resultadosFiltrados = Array.from({ length: 263 }, (_, index) => ({
+    intento_id: index + 1,
+    nombre: `Estudiante ${index + 1}`,
+    apellido: "Prueba",
+    grupo: "1MG",
+    actividad_titulo: "Actividad",
+    numero_intento: 1,
+    porcentaje: 80,
+    juicio: "Logrado",
+    fecha_intento: "2026-09-16T12:00:00Z",
+  }));
+  window.App.rowLimit = 25;
+
+  window.App.renderTabla();
+
+  assert.equal((elements.resultsTableBody.innerHTML.match(/<tr/g) || []).length, 25);
+  assert.equal(elements.tableStatus.textContent, "Mostrando 25 de 263 resultados.");
+
+  window.App.rowLimit = Infinity;
+  window.App.renderTabla();
+  assert.equal((elements.resultsTableBody.innerHTML.match(/<tr/g) || []).length, 263);
+  assert.equal(elements.tableStatus.textContent, "263 resultado(s) mostrado(s).");
 });

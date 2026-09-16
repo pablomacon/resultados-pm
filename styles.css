@@ -396,6 +396,10 @@ button {
   margin-top: 6px;
 }
 
+.table-limit-control {
+  min-width: 210px;
+}
+
 /* FILTROS */
 
 .filters-grid {

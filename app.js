@@ -3,6 +3,7 @@ const App = {
   resultadosFiltrados: [],
   sortKey: "fecha_intento",
   sortDirection: "desc",
+  rowLimit: 25,
   initialized: false,
   cuestionariosCargados: new Map(),
   entregasOriginales: [],
@@ -35,6 +36,7 @@ const App = {
     const activityFilter = document.getElementById("activityFilter");
     const attemptModeFilter = document.getElementById("attemptModeFilter");
     const studentSearch = document.getElementById("studentSearch");
+    const resultsRowLimit = document.getElementById("resultsRowLimit");
     const loadAnalysisBtn = document.getElementById("loadAnalysisBtn");
     const closeModalBtn = document.getElementById("closeModalBtn");
     const attemptModal = document.getElementById("attemptModal");
@@ -66,6 +68,13 @@ const App = {
       studentSearch.addEventListener("input", () => {
         this.aplicarFiltroLocal();
         this.render();
+      });
+    }
+
+    if (resultsRowLimit) {
+      resultsRowLimit.addEventListener("change", () => {
+        this.rowLimit = resultsRowLimit.value === "all" ? Infinity : Number(resultsRowLimit.value);
+        this.renderTabla();
       });
     }
 
@@ -277,7 +286,12 @@ const App = {
       return;
     }
 
-    tbody.innerHTML = this.resultadosFiltrados
+    const total = this.resultadosFiltrados.length;
+    const resultadosVisibles = Number.isFinite(this.rowLimit)
+      ? this.resultadosFiltrados.slice(0, this.rowLimit)
+      : this.resultadosFiltrados;
+
+    tbody.innerHTML = resultadosVisibles
       .map((item) => this.renderFilaResultado(item))
       .join("");
 
@@ -289,7 +303,9 @@ const App = {
     });
 
     if (tableStatus) {
-      tableStatus.textContent = `${this.resultadosFiltrados.length} resultado(s) mostrado(s).`;
+      tableStatus.textContent = resultadosVisibles.length < total
+        ? `Mostrando ${resultadosVisibles.length} de ${total} resultados.`
+        : `${total} resultado(s) mostrado(s).`;
     }
   },
 
