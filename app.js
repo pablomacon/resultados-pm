@@ -5,8 +5,8 @@ const App = {
   sortDirection: "desc",
   initialized: false,
   cuestionariosCargados: new Map(),
+  entregasOriginales: [],
   entregas: [],
-  gruposEntregas: [],
 
   urlsCuestionarios: {
     "iterativas-java-03":
@@ -39,14 +39,14 @@ const App = {
     const closeModalBtn = document.getElementById("closeModalBtn");
     const attemptModal = document.getElementById("attemptModal");
     const refreshDeliveriesBtn = document.getElementById("refreshDeliveriesBtn");
-    const deliveryGroupFilter = document.getElementById("deliveryGroupFilter");
+    const deliveryFilters = ["deliveryActivityFilter", "deliveryGroupFilter", "deliveryBlockFilter", "deliveryStudentFilter"];
 
     if (refreshBtn) {
       refreshBtn.addEventListener("click", () => this.cargarResultados());
     }
 
     if (refreshDeliveriesBtn) refreshDeliveriesBtn.addEventListener("click", () => this.cargarEntregas());
-    if (deliveryGroupFilter) deliveryGroupFilter.addEventListener("change", () => this.cargarEntregas());
+    deliveryFilters.forEach((id) => document.getElementById(id)?.addEventListener("change", () => this.aplicarFiltrosEntregas()));
 
     if (groupFilter) {
       groupFilter.addEventListener("change", () => this.cargarResultados());
@@ -359,28 +359,73 @@ const App = {
 
   async cargarEntregas() {
     const status = document.getElementById("deliveriesStatus");
-    const group = document.getElementById("deliveryGroupFilter")?.value || "";
     if (status) status.textContent = "Cargando entregas...";
-    const response = await DocenteAPI.obtenerEntregas({ idToken: AuthService.idToken, grupo: group });
+    const response = await DocenteAPI.obtenerEntregas({ idToken: AuthService.idToken });
     if (!response.ok) {
+      this.entregasOriginales = [];
       this.entregas = [];
       if (status) status.textContent = response.message || "No se pudieron cargar las entregas.";
       this.renderEntregas();
       return;
     }
-    this.entregas = response.entregas || [];
-    this.gruposEntregas = [...new Set([...this.gruposEntregas, ...this.entregas.map((item) => item.grupo).filter(Boolean)])].sort();
-    this.cargarGruposEntregas(group);
-    this.renderEntregas();
+    this.entregasOriginales = response.entregas || [];
+    this.cargarOpcionesEntregas();
+    this.aplicarFiltrosEntregas();
   },
 
-  cargarGruposEntregas(grupoActual) {
-    const select = document.getElementById("deliveryGroupFilter");
-    if (!select) return;
-    const groups = this.gruposEntregas;
-    select.innerHTML = '<option value="">Todos los grupos</option>';
-    groups.forEach((group) => { const option = document.createElement("option"); option.value = group; option.textContent = group; select.appendChild(option); });
-    select.value = grupoActual;
+  cargarOpcionesEntregas() {
+    const activitySelect = document.getElementById("deliveryActivityFilter");
+    const groupSelect = document.getElementById("deliveryGroupFilter");
+    const blockSelect = document.getElementById("deliveryBlockFilter");
+    const studentSelect = document.getElementById("deliveryStudentFilter");
+    if (!activitySelect || !groupSelect || !blockSelect || !studentSelect) return;
+
+    const current = {
+      activity: activitySelect.value,
+      group: groupSelect.value,
+      block: blockSelect.value,
+      student: studentSelect.value,
+    };
+    const activities = new Map();
+    const students = new Map();
+    this.entregasOriginales.forEach((item) => {
+      if (item.actividad_slug) activities.set(item.actividad_slug, item.actividad_titulo || item.actividad_slug);
+      if (item.estudiante_id) students.set(String(item.estudiante_id), `${item.apellido || ""}, ${item.nombre || ""}${item.grupo ? ` · ${item.grupo}` : ""}`);
+    });
+
+    this.cargarSelectEntrega(activitySelect, "Todas las actividades", [...activities.entries()].sort((a, b) => a[1].localeCompare(b[1])), current.activity);
+    this.cargarSelectEntrega(groupSelect, "Todos los grupos", [...new Set(this.entregasOriginales.map((item) => item.grupo).filter(Boolean))].sort().map((value) => [value, value]), current.group);
+    this.cargarSelectEntrega(blockSelect, "Todos los bloques", [...new Set(this.entregasOriginales.map((item) => Number(item.bloque)).filter(Number.isFinite))].sort((a, b) => a - b).map((value) => [String(value), `Bloque ${value}`]), current.block);
+    this.cargarSelectEntrega(studentSelect, "Todos los estudiantes", [...students.entries()].sort((a, b) => a[1].localeCompare(b[1])), current.student);
+  },
+
+  cargarSelectEntrega(select, allLabel, entries, selectedValue) {
+    select.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = allLabel;
+    select.appendChild(allOption);
+    entries.forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.appendChild(option);
+    });
+    select.value = entries.some(([value]) => String(value) === String(selectedValue)) ? selectedValue : "";
+  },
+
+  aplicarFiltrosEntregas() {
+    const activity = document.getElementById("deliveryActivityFilter")?.value || "";
+    const group = document.getElementById("deliveryGroupFilter")?.value || "";
+    const block = document.getElementById("deliveryBlockFilter")?.value || "";
+    const student = document.getElementById("deliveryStudentFilter")?.value || "";
+    this.entregas = this.entregasOriginales.filter((item) =>
+      (!activity || item.actividad_slug === activity) &&
+      (!group || item.grupo === group) &&
+      (!block || String(item.bloque) === block) &&
+      (!student || String(item.estudiante_id) === student)
+    );
+    this.renderEntregas();
   },
 
   renderEntregas() {
@@ -388,13 +433,14 @@ const App = {
     const status = document.getElementById("deliveriesStatus");
     if (!body) return;
     if (!this.entregas.length) {
-      body.innerHTML = '<tr><td colspan="8" class="empty-cell">No hay entregas para los filtros seleccionados.</td></tr>';
-      if (status) status.textContent = "No hay entregas registradas.";
+      body.innerHTML = '<tr><td colspan="9" class="empty-cell">No hay entregas para los filtros seleccionados.</td></tr>';
+      if (status) status.textContent = this.entregasOriginales.length ? "No hay entregas que coincidan con los filtros seleccionados." : "No hay entregas registradas.";
       return;
     }
     body.innerHTML = this.entregas.map((item) => `<tr>
       <td>${this.escapeHtml(`${item.apellido || ""}, ${item.nombre || ""}`)}</td>
       <td>${this.escapeHtml(item.grupo || "")}</td>
+      <td>${this.escapeHtml(item.actividad_titulo || item.actividad_slug || "")}</td>
       <td>${this.escapeHtml(item.numero_ejercicio)}</td>
       <td>${this.escapeHtml(item.bloque)}</td>
       <td>${this.escapeHtml(item.numero_version)}</td>
@@ -414,10 +460,10 @@ const App = {
     const content = document.getElementById("attemptDetailContent");
     if (!item || !modal || !content) return;
     if (title) title.textContent = `Entrega · Ejercicio ${item.numero_ejercicio}`;
-    if (subtitle) subtitle.textContent = `${item.apellido}, ${item.nombre} · Bloque ${item.bloque} · Versión ${item.numero_version}`;
+    if (subtitle) subtitle.textContent = `${item.apellido}, ${item.nombre} · ${item.actividad_titulo || item.actividad_slug} · Bloque ${item.bloque} · Versión ${item.numero_version}`;
     const drive = item.drive_file_id ? `<p><strong>Archivo:</strong> ${this.escapeHtml(item.nombre_original || "")} · <a class="drive-link" target="_blank" rel="noopener" href="https://drive.google.com/open?id=${encodeURIComponent(item.drive_file_id)}">Abrir en Drive</a></p>` : "";
     const code = item.codigo_texto ? `<h3>Código escrito</h3><pre class="code-preview">${this.escapeHtml(item.codigo_texto)}</pre>` : "";
-    content.innerHTML = `<section class="detail-summary"><article class="detail-summary-item"><span>Grupo</span><strong>${this.escapeHtml(item.grupo)}</strong></article><article class="detail-summary-item"><span>Fecha</span><strong>${this.formatearFecha(item.fecha_entrega)}</strong></article><article class="detail-summary-item"><span>Evidencia</span><strong>${this.escapeHtml(item.tipo_evidencia)}</strong></article></section><section class="answer-list">${drive}${code}<h3>Respuesta para explicar</h3><p>${this.escapeHtml(item.respuesta_explicacion)}</p></section>`;
+    content.innerHTML = `<section class="detail-summary"><article class="detail-summary-item"><span>Actividad</span><strong>${this.escapeHtml(item.actividad_titulo || item.actividad_slug)}</strong></article><article class="detail-summary-item"><span>Grupo</span><strong>${this.escapeHtml(item.grupo)}</strong></article><article class="detail-summary-item"><span>Fecha</span><strong>${this.formatearFecha(item.fecha_entrega)}</strong></article><article class="detail-summary-item"><span>Evidencia</span><strong>${this.escapeHtml(item.tipo_evidencia)}</strong></article></section><section class="answer-list">${drive}${code}<h3>Respuesta para explicar</h3><p>${this.escapeHtml(item.respuesta_explicacion)}</p></section>`;
     modal.hidden = false;
   },
 

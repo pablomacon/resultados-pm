@@ -225,20 +225,29 @@
             <div class="filters-header">
               <div>
                 <h2 class="section-title">Entregas de código</h2>
-                <p>Consultá archivos, código escrito y explicaciones de “50 ejercicios de arreglos y Strings”.</p>
+                <p>Consultá archivos, código escrito y explicaciones de las actividades de entrega.</p>
               </div>
               <button id="refreshDeliveriesBtn" class="btn">Actualizar entregas</button>
             </div>
             <div class="filters-grid deliveries-filters">
+              <label>Actividad
+                <select id="deliveryActivityFilter"><option value="">Todas las actividades</option></select>
+              </label>
               <label>Grupo
                 <select id="deliveryGroupFilter"><option value="">Todos los grupos</option></select>
+              </label>
+              <label>Bloque
+                <select id="deliveryBlockFilter"><option value="">Todos los bloques</option></select>
+              </label>
+              <label>Estudiante
+                <select id="deliveryStudentFilter"><option value="">Todos los estudiantes</option></select>
               </label>
             </div>
             <p id="deliveriesStatus" class="table-status">Iniciá sesión para cargar las entregas.</p>
             <div class="table-wrapper">
               <table>
-                <thead><tr><th>Estudiante</th><th>Grupo</th><th>Ejercicio</th><th>Bloque</th><th>Versión</th><th>Evidencia</th><th>Fecha</th><th>Detalle</th></tr></thead>
-                <tbody id="deliveriesTableBody"><tr><td colspan="8" class="empty-cell">Sin entregas cargadas.</td></tr></tbody>
+                <thead><tr><th>Estudiante</th><th>Grupo</th><th>Actividad</th><th>Ejercicio</th><th>Bloque</th><th>Versión</th><th>Evidencia</th><th>Fecha</th><th>Detalle</th></tr></thead>
+                <tbody id="deliveriesTableBody"><tr><td colspan="9" class="empty-cell">Sin entregas cargadas.</td></tr></tbody>
               </table>
             </div>
           </section>

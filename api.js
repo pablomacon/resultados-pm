@@ -75,10 +75,9 @@ const DocenteAPI = {
     });
   },
 
-  async obtenerEntregas({ idToken, grupo }) {
+  async obtenerEntregas({ idToken }) {
     return this.post("/docente/entregas", {
       idToken,
-      grupo: grupo || null,
     });
   },
 };
