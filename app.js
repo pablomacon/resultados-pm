@@ -460,7 +460,7 @@ const App = {
       <td>${this.escapeHtml(item.numero_ejercicio)}</td>
       <td>${this.escapeHtml(item.bloque)}</td>
       <td>${this.escapeHtml(item.numero_version)}</td>
-      <td><span class="delivery-type ${item.tipo_evidencia === "texto" ? "text" : ""}">${item.tipo_evidencia === "texto" ? "Código escrito" : "Archivo"}</span></td>
+      <td><span class="delivery-type ${item.tipo_evidencia === "texto" ? "text" : ""}">${this.etiquetaEvidencia(item.tipo_evidencia)}</span></td>
       <td>${this.formatearFecha(item.fecha_entrega)}</td>
       <td><button class="detail-button" data-delivery-id="${item.entrega_id}">Ver</button></td>
     </tr>`).join("");
@@ -479,8 +479,29 @@ const App = {
     if (subtitle) subtitle.textContent = `${item.apellido}, ${item.nombre} · ${item.actividad_titulo || item.actividad_slug} · Bloque ${item.bloque} · Versión ${item.numero_version}`;
     const drive = item.drive_file_id ? `<p><strong>Archivo:</strong> ${this.escapeHtml(item.nombre_original || "")} · <a class="drive-link" target="_blank" rel="noopener" href="https://drive.google.com/open?id=${encodeURIComponent(item.drive_file_id)}">Abrir en Drive</a></p>` : "";
     const code = item.codigo_texto ? `<h3>Código escrito</h3><pre class="code-preview">${this.escapeHtml(item.codigo_texto)}</pre>` : "";
-    content.innerHTML = `<section class="detail-summary"><article class="detail-summary-item"><span>Actividad</span><strong>${this.escapeHtml(item.actividad_titulo || item.actividad_slug)}</strong></article><article class="detail-summary-item"><span>Grupo</span><strong>${this.escapeHtml(item.grupo)}</strong></article><article class="detail-summary-item"><span>Fecha</span><strong>${this.formatearFecha(item.fecha_entrega)}</strong></article><article class="detail-summary-item"><span>Evidencia</span><strong>${this.escapeHtml(item.tipo_evidencia)}</strong></article></section><section class="answer-list">${drive}${code}<h3>Respuesta para explicar</h3><p>${this.escapeHtml(item.respuesta_explicacion)}</p></section>`;
+    const formulario = item.tipo_evidencia === "formulario" ? this.renderFormularioEntrega(item.respuesta_formulario) : `<h3>Respuesta para explicar</h3><p>${this.escapeHtml(item.respuesta_explicacion)}</p>`;
+    content.innerHTML = `<section class="detail-summary"><article class="detail-summary-item"><span>Actividad</span><strong>${this.escapeHtml(item.actividad_titulo || item.actividad_slug)}</strong></article><article class="detail-summary-item"><span>Grupo</span><strong>${this.escapeHtml(item.grupo)}</strong></article><article class="detail-summary-item"><span>Fecha</span><strong>${this.formatearFecha(item.fecha_entrega)}</strong></article><article class="detail-summary-item"><span>Evidencia</span><strong>${this.etiquetaEvidencia(item.tipo_evidencia)}</strong></article></section><section class="answer-list">${drive}${code}${formulario}</section>`;
     modal.hidden = false;
+  },
+
+  etiquetaEvidencia(tipo) {
+    if (tipo === "texto") return "Código escrito";
+    if (tipo === "formulario") return "Formulario";
+    return "Archivo";
+  },
+
+  renderFormularioEntrega(raw) {
+    let respuesta = raw;
+    try { if (typeof raw === "string") respuesta = JSON.parse(raw); } catch { respuesta = null; }
+    if (!respuesta || typeof respuesta !== "object" || !respuesta.respuestas) return '<p class="empty-state">No se pudo interpretar esta entrega de formulario.</p>';
+    if (respuesta.tipo === "preguntas_abiertas") {
+      const preguntas = Object.entries(respuesta.respuestas).map(([clave, valor]) => `<article class="form-answer"><h3>${this.escapeHtml(clave.replace("pregunta-", "Pregunta "))}</h3><p>${this.escapeHtml(valor)}</p></article>`).join("");
+      return `<h3>Preguntas para pensar</h3>${preguntas}`;
+    }
+    const encabezados = respuesta.tipo === "tabla_atributos" ? ["Características posibles", "Características necesarias"] : ["Comportamientos posibles", "Comportamientos necesarios / métodos"];
+    const nombres = { "cliente-agencia-viajes": "Cliente de agencia de viajes", "animal-zoologico": "Animal de zoológico", "jugador-futbol": "Jugador de fútbol", vehiculo: "Vehículo" };
+    const filas = Object.entries(respuesta.respuestas).map(([clave, valores]) => `<tr><th>${this.escapeHtml(nombres[clave] || clave)}</th><td>${this.escapeHtml(valores?.posibles || "")}</td><td>${this.escapeHtml(valores?.necesarias || "")}</td></tr>`).join("");
+    return `<h3>${respuesta.tipo === "tabla_atributos" ? "Características y atributos" : "Comportamientos y métodos"}</h3><div class="table-wrapper"><table><thead><tr><th>Objeto</th><th>${encabezados[0]}</th><th>${encabezados[1]}</th></tr></thead><tbody>${filas}</tbody></table></div>`;
   },
 
   async abrirDetalleIntento(intentoId) {

@@ -837,3 +837,4 @@ footer small {
     width: 100%;
   }
 }
+.answer-list td,.form-answer p{white-space:pre-line}
